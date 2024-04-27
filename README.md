@@ -1,256 +1,401 @@
-# Applying Gradient Descent - Lab
+# Gradient Descent: Step Sizes - Lab
 
 ## Introduction
 
-There are functions that we help us descend along cost functions efficiently by using the derivative. 
-
-<img src="https://raw.githubusercontent.com/learn-co-curriculum/dsc-applying-gradient-descent-lab/master/images/slopes.png" alt="RSS with changes to slope" />
-
-When descending along our cost curve in two dimensions, we use the slope of the tangent line at each point, which tells us how large of a step to take next.  Since the cost curve is a function of $m$ and $b$, we use the gradient to determine each step.  
-
-<img src="https://raw.githubusercontent.com/learn-co-curriculum/dsc-applying-gradient-descent-lab/master/images/new_gradientdescent.png" alt="gradient descent in 3d with absolute minimum highlighted" width="600">
-
-We can calculate the derivative of a function $f(x)$ to calculate the slope at a given value of $x$ on the graph and thus our next step.  Here, we calculated the partial derivative with respect to both variables to find the amount to move next in either direction and thus to steer us towards our minimum.
+In this lab, you'll practice applying gradient descent.  As you know, gradient descent begins with an initial regression line and moves to a "best fit" regression line by changing values of $m$ and $b$ and evaluating the RSS.  So far, we have illustrated this technique by changing the values of $m$ and evaluating the RSS.  In this lab, you will work through applying this technique by changing the value of $b$ instead.  Let's get started.
 
 ## Objectives
 
 You will be able to:
 
-* Create functions to perform a simulation of gradient descent for an actual dataset
-* Represent RSS as a multivariable function and take partial derivatives to perform gradient descent
-
-## Reviewing our gradient descent formulas
-
-Luckily for us, we already did the hard work of deriving these formulas.  Now we get to see the fruit of our labor.  The following formulas tell us how to update regression variables of $m$ and $b$ to approach a "best fit" line.   
-
-- $ \frac{dJ}{dm}J(m,b) = -2\sum_{i = 1}^n x_i(y_i - (mx_i + b)) = -2\sum_{i = 1}^n x_i*\epsilon_i$ 
-- $ \frac{dJ}{db}J(m,b) = -2\sum_{i = 1}^n(y_i - (mx_i + b)) = -2\sum_{i = 1}^n \epsilon_i $
-
-Now the formulas above tell us to take some dataset, with values of $x$ and $y$, and then given a regression formula with values $m$ and $b$, iterate through our dataset, and use the formulas to calculate an update to $m$ and $b$.  So ultimately, to descend along the cost function, we will use the calculations:
-
-`current_m` = `old_m` $ -  (-2*\sum_{i=1}^n x_i*\epsilon_i )$
-
-`current_b` =  `old_b` $ - ( -2*\sum_{i=1}^n \epsilon_i )$
-
-Let's turn this into code.  First, let's initialize our data like we did before:
+- Use gradient descent to find the optimal parameters for a linear regression model
+- Describe how to use an RSS curve to find the optimal parameters for a linear regression model
 
 
 ```python
+import sys
 import numpy as np
 np.set_printoptions(formatter={'float_kind':'{:f}'.format})
 import matplotlib.pyplot as plt
-%matplotlib inline
+```
+
+## Setting up Our Initial Regression Line
+
+Once again, we'll take a look at revenues (our data example), which looks like this:
+
+
+```python
 np.random.seed(225)
 
 x = np.random.rand(30, 1).reshape(30)
 y_randterm = np.random.normal(0,3,30)
-y = 3 + 50* x + y_randterm
+y = 3 + 50*x + y_randterm
 
-data = np.array([y, x])
-data = np.transpose(data)
-
-plt.plot(x, y, '.b')
-plt.xlabel("x", fontsize=14)
-plt.ylabel("y", fontsize=14);
+fig, ax = plt.subplots()
+ax.scatter(x, y, marker=".", c="b")
+ax.set_xlabel("x", fontsize=14)
+ax.set_ylabel("y", fontsize=14)
+fig.suptitle("Revenues");
 ```
 
-Now
-
-- Let's set our initial regression line by initializing $m$ and $b$ variables as zero.  Store them in `b_current` and `m_current`.
-- Let's next initialize updates to these variables by setting the variables, `update_to_b` and `update_to_m` equal to 0.
-- Define an `error_at` function which returns the error $\epsilon_i$ for a given $i$. The parameters are:
-> point: a row of the particular data set  
-> $b$: the intercept term  
-> $m$: the slope  
-
-- Them, use this `error_at` function to iterate through each of the points in the dataset, and at each iteration change our `update_to_b` by $2*\epsilon$ and change our `update_to_m` by $2*x*\epsilon$.
+We can start with some values for an initial not-so-accurate regression line, $y = 43x + 12$.
 
 
 ```python
-# initial variables of our regression line
-
-
-#amount to update our variables for our next step
-
-
-# Define the error_at function
-
-
-# iterate through data to change update_to_b and update_to_m
-
-
-# Create new_b and new_m by subtracting the updates from the current estimates
-
-
+def regression_formula(x):
+    return 43*x + 12
 ```
 
-In the last two lines of the code above, we calculate our `new_b` and `new_m` values by updating our taking our current values and adding our respective updates.  We define a function called `error_at`, which we can use in the error component of our partial derivatives above.
-
-The code above represents **just one** update to our regression line, and therefore just one step towards our best fit line.  We'll just repeat the process to take multiple steps.  But first, we have to make a couple of other changes. 
-
-## Tweaking our approach 
-
-The above code is very close to what we want, but we just need to make tweaks to our code before it's perfect.
-
-The first one is obvious if we think about what these formulas are really telling us to do.  Look at the graph below, and think about what it means to change each of our $m$ and $b$ variables by at least the sum of all of the errors, of the $y$ values that our regression line predicts and our actual data.  That would be an enormous change.  To ensure that we drastically updating our regression line with each step, we multiply each of these partial derivatives by a learning rate.  As we have seen before, the learning rate is just a small number, like $.
-01$ which controls how large our updates to the regression line will be.  The learning rate is  represented by the Greek letter eta, $\eta$, or alpha $\alpha$.  We'll use eta, so $\eta = .01$ means the learning rate is $.01$.
-
-Multiplying our step size by our learning rate works fine, so long as we multiply both of the partial derivatives by the same amount.  This is because without gradient,  $ \nabla J(m,b)$, we think of as steering us in the correct direction.  In other words, our derivatives ensure we are making the correct **proportional** changes to $m$ and $b$.  So scaling down these changes to make sure we don't update our regression line too quickly works fine, so long as we keep me moving in the correct direction.  While we're at it, we can also get rid of multiplying our partials by 2.  As mentioned, so long as our changes are proportional we're in good shape. 
-
-For our second tweak, note that in general the larger the dataset, the larger the sum of our errors would be.  But that doesn't mean our formulas are less accurate, and there deserve larger changes.  It just means that the total error is larger.  But we should really think accuracy as being proportional to the size of our dataset.  We can correct for this effect by dividing the effect of our update by the size of our dataset, $n$.
-
-Make these changes below:
+We plot this line with the same data below:
 
 
 ```python
-#amount to update our variables for our next step
+fig, ax = plt.subplots()
+ax.scatter(x, y, marker=".", c="b")
+ax.plot(x, regression_formula(x), color="orange", label=r'$y = 43x + 12$')
+ax.set_xlabel("x", fontsize=14)
+ax.set_ylabel("y", fontsize=14)
+fig.suptitle("Revenues", fontsize=16)
+ax.legend();
+```
+
+As you can see, this line is near the data, but not quite right. Let's evaluate that more formally using RSS.
 
 
-# define learning rate and n
+```python
+def errors(x_values, y_values, m, b):
+    y_line = (b + m*x_values)
+    return (y_values - y_line)
+
+def squared_errors(x_values, y_values, m, b):
+    return errors(x_values, y_values, m, b)**2
+
+def residual_sum_squares(x_values, y_values, m, b):
+    return sum(squared_errors(x_values, y_values, m, b))
+```
+
+Now using the `residual_sum_squares`, function, we calculate the RSS to measure the accuracy of the regression line to our data.  Let's take another look at that function:
 
 
-# create update_to_b and update_to_m
+```python
+residual_sum_squares(x, y , 43, 12)
+```
 
+So, for a $b$ of 12, we are getting an RSS of 1117.8. Let's see if we can do better than that!
+
+### Building a cost curve
+
+Now let's use the `residual_sum_squares` function to build a cost curve.  Keeping the $m$ value fixed at $43$, write a function called `rss_values`.  
+* `rss_values` passes our dataset with the `x_values` and `y_values` arguments.  
+* It also takes a list of values of $b$, and an initial $m$ value as arguments.  
+* It outputs a NumPy array with a first column of `b_values` and second column of `rss_values`. For example, this input:
+  ```python
+  rss_values(x, y, 43, [1, 2, 3])
+  ```
+  Should produce this output:
+  ```python
+  array([[1.000000, 1368.212664],
+       [2.000000, 1045.452004],
+       [3.000000, 782.691343]])
+  ```
+  Where 1, 2, and 3 are the b values an 1368.2, 1045.5 and 782.7 are the associated RSS values.
+  
+*Hint:* Check out `np.zeros` ([documentation here](https://numpy.org/doc/stable/reference/generated/numpy.zeros.html)).
+
+
+```python
+# Replace None with appropriate code
+def rss_values(x_values, y_values, m, b_values):
+    # Make a NumPy array to contain the data
+    None
     
-# create new_b and new_m
-
-
+    # Loop over all of the values in b_values
+    for idx, b_val in enumerate(b_values):
+        # Add the current b value and associated RSS to the
+        # NumPy array
+        None
+        None
+        
+    # Return the NumPy array
+    None
 ```
-
-The code now reflects what we know about our gradient descent process.  Start with an initial regression line with values of $m$ and $b$.  Then for each point, calculate how the regression line fares against the actual point (that is, find the error).  Update what the next step to the respective variable should be by using the partial derivative.  And after iterating through all of the points, update the value of $b$ and $m$ appropriately, scaled down by a learning rate.
-
-## Seeing our gradient descent formulas in action
-
-The code above represents just one update to our regression line, and therefore just one step towards our best fit line.  To take multiple steps we wrap the process we want to duplicate in a function called `step_gradient` and then can call that function as much as we want. With this function:
-
-- Include a learning_rate of 0.1
-- Return a tuple of (b,m)  
-The parameters should be:
-> b_current : the starting value of b   
-> m_current : the starting value of m   
-> points : the number of points at which we want to check our gradient 
-
-See if you can use your `error_at` function within the `step_gradient` function!
 
 
 ```python
-def step_gradient(b_current, m_current, points):
+# Run this cell without changes
+example_rss = rss_values(x, y, 43, [1,2,3])
+
+# Should return a NumPy array
+assert type(example_rss) == np.ndarray
+
+# Specifically a 2D array
+assert example_rss.ndim == 2
+
+# The shape should match the number of b values passed in
+assert example_rss.shape == (3, 2)
+
+example_rss
+```
+
+Now let's make more of an attempt to find the actual best b value for our `x` and `y` data.
+
+Make an array `b_val` that contains values between 0 and 14 with steps of 0.5.
+
+*Hint:* Check out `np.arange` ([documentation here](https://numpy.org/doc/stable/reference/generated/numpy.arange.html))
+
+
+```python
+# Replace None with appropriate code
+b_val = None
+b_val
+```
+
+Now use your `rss_values` function to find the RSS values for each value in `b_val`. Continue to use the m value of 43.
+
+We have included code to print out the resulting table.
+
+
+```python
+# Replace None with appropriate code
+bval_rss = None
+np.savetxt(sys.stdout, bval_rss, '%16.2f') # this line is to round your result, which will make things look nicer.
+```
+
+This represents our cost curve!
+
+Let's plot this out using a a line chart.
+
+
+```python
+fig, ax = plt.subplots(figsize=(10,7))
+ax.plot(bval_rss[:,0], bval_rss[:,1])
+ax.set_xlabel(r'$b$ values', fontsize=14)
+ax.set_ylabel("RSS", fontsize=14)
+fig.suptitle("RSS with Changes to Intercept", fontsize=16);
+```
+
+## Looking at the Slope of Our Cost Curve
+
+In this section, we'll work up to building a gradient descent function that automatically changes our step size.  To get you started, we'll provide a function called `slope_at` that calculates the slope of the cost curve at a given point on the cost curve.
+
+Use the `slope_at` function for b-values 3 and 6 (continuing to use an m of 43).
+
+
+```python
+def slope_at(x_values, y_values, m, b):
+    delta = .001
+    base_rss = residual_sum_squares(x_values, y_values, m, b)
+    delta_rss = residual_sum_squares(x_values, y_values, m, b + delta)
+    numerator = delta_rss - base_rss
+    slope = numerator/delta
+    return slope
+```
+
+
+```python
+# Use slope_at for b value 3
+
+# -232.73066022784406
+```
+
+
+```python
+# Use slope_at for b value 6
+
+# -52.73066022772355
+```
+
+The `slope_at` function takes in our dataset, and returns the slope of the cost curve at that point.  So the numbers -232.73 and -52.73 reflect the slopes at the cost curve when b is 3 and 6 respectively.
+
+Below, we plot these on the cost curve.
+
+
+```python
+# Setting up to repeat the same process for 3 and 6
+# (You can change these values to see other tangent lines)
+b_vals = [3, 6]
+
+def plot_slope_at_b_vals(x, y, m, b_vals, bval_rss):
+    # Find the slope at each of these values
+    slopes = [slope_at(x, y, m, b) for b in b_vals]
+    # Find the RSS at each of these values
+    rss_values = [residual_sum_squares(x, y, m, b) for b in b_vals]
+
+    # Calculate the actual x and y locations for plotting
+    x_values = [np.linspace(b-1, b+1, 100) for b in b_vals]
+    y_values = [rss_values[i] + slopes[i]*(x_values[i] - b) for i, b in enumerate(b_vals)]
+    
+    # Plotting the same RSS curve as before
+    fig, ax = plt.subplots(figsize=(10,7))
+    ax.plot(bval_rss[:,0], bval_rss[:,1])
+    ax.set_xlabel(r'$b$ values', fontsize=14)
+    ax.set_ylabel("RSS", fontsize=14)
+
+    # Adding tangent lines for the selected b values
+    for i in range(len(b_vals)):
+        ax.plot(x_values[i], y_values[i], label=f"slope={round(slopes[i], 2)}", linewidth=3)
+
+    ax.legend(loc='upper right', fontsize='large')
+    fig.suptitle(f"RSS with Intercepts {[round(b, 3) for b in b_vals]} Highlighted", fontsize=16)
+    
+plot_slope_at_b_vals(x, y, 43, b_vals, bval_rss)
+```
+
+Let's look at the above graph.  When the curve is steeper and downwards at $b = 3$, the slope is around -232.73.  And at $b = 6$ with our cost curve becoming flatter, our slope is around -52.73. 
+
+## Moving Towards Gradient Descent
+
+Now that we are familiar with our `slope_at` function and how it calculates the slope of our cost curve at a given point, we can begin to use that function with our gradient descent procedure.
+
+Remember that gradient descent works by starting at a regression line with values m, and b, which corresponds to a point on our cost curve.  Then we alter our m or b value (here, the b value) by looking to the slope of the cost curve at that point.  Then we look to the slope of the cost curve at the new b value to indicate the size and direction of the next step.
+
+So now let's write a function called `updated_b`.  The function will tell us the step size and direction to move along our cost curve.  The `updated_b` function takes as arguments an initial value of $b$, a learning rate, and the `slope` of the cost curve at that value of $m$.  Its return value is the next value of `b` that it calculates.
+
+
+```python
+def updated_b(b, learning_rate, cost_curve_slope):
     pass
 ```
 
-Now let's initialize `b` and `m` as 0 and run a first iteration of the `step_gradient` function.
+Test out your function below. Each time we update `current_b` and step a little closer to the optimal value.
 
 
 ```python
+b_vals = []
 
-# b= 3.02503, m= 2.07286
-```
+current_b = 3
+b_vals.append(current_b)
 
-By looking at input and output, we begin by setting $b$ and $m$ to 0 and 0.  Then from our step_gradient function, we receive new values of $b$ and $m$ of 3.02503 and 2.0728.  Now what we need to do, is take another step in the correct direction by calling our step gradient function with our updated values of $b$ and $m$.
-
-
-```python
-
-# b = 5.63489, m= 3.902265
-```
-
-Let's do this, say, 1000 times.
-
-
-```python
-# create a for loop to do this
-```
-
-Let's take a look at the estimates in the last iteration.
-
-
-```python
-# 
-```
-
-As you can see, our  m  and  b  values both update with each step. Not only that, but with each step, the size of the changes to  m and  b  decrease. This is because they are approaching a best fit line.
-
-## Let's include 2 predictors, $x_1$ and $x_2$
-
-Below, we generated a problem where we have 2 predictors. We generated data such that the best fit line is around $\hat y = 3x_1 -4x_2 +2$, noting that there is random noise introduced, so the final result will never be exactly that. Let's build what we built previously, but now create a `step_gradient_multi` function that can take an *arbitrary* number of predictors (so the function should be able to include more than 2 predictors as well). Good luck!
-
-
-```python
-import numpy as np
-import matplotlib.pyplot as plt
-np.random.seed(11)
-
-x1 = np.random.rand(100,1).reshape(100)
-x2 = np.random.rand(100,1).reshape(100)
-y_randterm = np.random.normal(0,0.2,100)
-y = 2+ 3* x1+ -4*x2 + y_randterm
-
-data = np.array([y, x1, x2])
-data = np.transpose(data)
+current_cost_slope = slope_at(x, y, 43, current_b)
+new_b = updated_b(current_b, .01, current_cost_slope)
+print(f"""
+Current b: {round(current_b, 3)}
+Cost slope for current b: {round(current_cost_slope, 3)}
+Updated b: {round(new_b, 3)}
+""")
+# Current b: 3
+# Cost slope for current b: -232.731
+# Updated b: 5.327
 ```
 
 
 ```python
-f, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), sharey=True)
-ax1.set_title('x_1')
-ax1.plot(x1, y, '.b')
-ax2.set_title('x_2')
-ax2.plot(x2, y, '.b');
+current_b = new_b
+b_vals.append(current_b)
+
+current_cost_slope = slope_at(x, y, 43, current_b)
+new_b = updated_b(current_b, .01, current_cost_slope)
+print(f"""
+Current b: {round(current_b, 3)}
+Cost slope for current b: {round(current_cost_slope, 3)}
+Updated b: {round(new_b, 3)}
+""")
+# Current b: 5.327
+# Cost slope for current b: -93.092
+# Updated b: 6.258
 ```
-
-Note that, for our gradients, when having multiple predictors $x_j$ with $j \in 1,\ldots, k$
-
-$$ \frac{dJ}{dm_j}J(m_j,b) = -2\sum_{i = 1}^n x_{j,i}(y_i - (\sum_{j=1}^km{x_{j,i}} + b)) = -2\sum_{i = 1}^n x_{j,i}*\epsilon_i$$
-$$ \frac{dJ}{db}J(m_j,b) = -2\sum_{i = 1}^n(y_i - (\sum_{j=1}^km{x_{j,i}} + b)) = -2\sum_{i = 1}^n \epsilon_i $$
-    
-
-So we'll have one gradient per predictor along with the gradient for the intercept!
-
-Create the `step_gradient_multi` function below. As we said before, this means that we have more than one feature that we are using as an independent variable in the regression. This function will have the same inputs as `step_gradient`, but it will be able to handle having more than one value for m. It should return the final values for b and m in the form of a tuple.
-
-- `b_current` refers to the y-intercept at the current step
-- `m_current` refers to the slope at the current step
-- `points` are the data points to which we want to fit a line
-
-You might have to refactor your `error` at function if you want to use it with multiple m values.
 
 
 ```python
-def step_gradient_multi(b_current, m_current ,points):
+current_b = new_b
+b_vals.append(current_b)
+
+current_cost_slope = slope_at(x, y, 43, current_b)
+new_b = updated_b(current_b, .01, current_cost_slope)
+print(f"""
+Current b: {round(current_b, 3)}
+Cost slope for current b: {round(current_cost_slope, 3)}
+Updated b: {round(new_b, 3)}
+""")
+# Current b: 6.258
+# Cost slope for current b: -37.237
+# Updated b: 6.631
+```
+
+
+```python
+current_b = new_b
+b_vals.append(current_b)
+
+current_cost_slope = slope_at(x, y, 43, current_b)
+new_b = updated_b(current_b, .01, current_cost_slope)
+print(f"""
+Current b: {round(current_b, 3)}
+Cost slope for current b: {round(current_cost_slope, 3)}
+Updated b: {round(new_b, 3)}
+""")
+# Current b: 6.631
+# Cost slope for current b: -14.895
+# Updated b: 6.78
+```
+
+Take a careful look at how we use the `updated_b` function.  By using our updated value of $b$ we are quickly converging towards an optimal value of $b$.
+
+In the cell below, we plot each of these b values and their associated cost curve slopes. Note how the tangent lines get closer together as the steps approach the minimum.
+
+
+```python
+plot_slope_at_b_vals(x, y, 43, b_vals, bval_rss)
+```
+
+We can visualize the actual lines created by those b values against the data like this:
+
+
+```python
+fig, ax = plt.subplots(figsize=(10,7))
+ax.scatter(x, y, marker=".", c="b")
+colors = ['#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+for i, b in enumerate(b_vals):
+    ax.plot(x, x*43 + b, color=colors[i], label=f'$y = 43x + {round(b, 3)}$', linewidth=3)
+ax.set_xlabel("x", fontsize=14)
+ax.set_ylabel("y", fontsize=14)
+fig.suptitle("Revenues", fontsize=16)
+ax.legend();
+```
+
+Now let's write another function called `gradient_descent`.  The inputs of the function are `x_values`, `y_values`, `steps`, the `m` we are holding constant, the `learning_rate`, and the `current_b` that we are looking at.  The `steps` arguments represent the number of steps the function will take before the function stops.  We can get a sense of the return value in the cell below.  It is a list of dictionaries, with each dictionary having a key of the current `b` value, the `slope` of the cost curve at that `b` value, and the `rss` at that `b` value.
+
+
+```python
+def gradient_descent(x_values, y_values, steps, current_b, learning_rate, m):
     pass
 ```
 
-Apply 1 step to our data
+
+```python
+descent_steps = gradient_descent(x, y, 15, 0, learning_rate = .005, m = 43)
+descent_steps
+
+#[{'b': 0, 'rss': 1750.97, 'slope': -412.73},
+# {'b': 2.063653301142949, 'rss': 1026.94, 'slope': -288.91},
+# {'b': 3.5082106119386935, 'rss': 672.15, 'slope': -202.24},
+# {'b': 4.519400729495828, 'rss': 498.29, 'slope': -141.57},
+# {'b': 5.2272338117862205, 'rss': 413.1, 'slope': -99.1},
+# {'b': 5.72271696938941, 'rss': 371.35, 'slope': -69.37},
+# {'b': 6.06955517971187, 'rss': 350.88, 'slope': -48.56},
+# {'b': 6.312341926937677, 'rss': 340.86, 'slope': -33.99},
+# {'b': 6.482292649996282, 'rss': 335.94, 'slope': -23.79},
+# {'b': 6.601258156136964, 'rss': 333.53, 'slope': -16.66},
+# {'b': 6.684534010435641, 'rss': 332.35, 'slope': -11.66},
+# {'b': 6.742827108444089, 'rss': 331.77, 'slope': -8.16},
+# {'b': 6.7836322770506285, 'rss': 331.49, 'slope': -5.71},
+# {'b': 6.812195895074922, 'rss': 331.35, 'slope': -4.0},
+# {'b': 6.832190427692808, 'rss': 331.28, 'slope': -2.8}]
+```
+
+Looking at our b-values, you get a pretty good idea of how our gradient descent function works.  It starts far away with $b = 0$, and the step size is relatively large, as is the slope of the cost curve.  As the $b$ value updates such that it approaches a minimum of the RSS, the slope of the cost curve and the size of each step both decrease.
+
+Compared to the initial RSS of 1117.8 when $b$ was 12, we are down to 331.3!
+
+Remember that each of these steps indicates a change in our regression line's slope value towards a "fit" that more accurately matches our dataset.  Let's plot the final regression line as found before, with $m=43$ and $b=6.83$
 
 
 ```python
-
+# plot the final result here
 ```
 
-Apply 500 steps to our data
-
-
-```python
-
-```
-
-Look at the last step
-
-
-```python
-
-```
-
-## Level up - optional
-
-Try your own gradient descent algorithm on the Boston Housing data set, and compare with the result from scikit-learn.
-Be careful to test on a few continuous variables at first, and see how you perform. Scikit-learn has built-in "regularization" parameters to make optimization more feasible for many parameters.
+As you can see, this final intercept value of around $b=6.8$ matches our data much better than the previous guess of 12. Remember that the slope was kept constant. You can see that lifting the slope upwards could probably even lead to a better fit!
 
 ## Summary
 
-In this section, we saw our gradient descent formulas in action.  The core of the gradient descent functions is understanding the two lines: 
-
-$$ \frac{dJ}{dm}J(m,b) = -2\sum_{i = 1}^n x(y_i - (mx_i + b)) = -2\sum_{i = 1}^n x_i*\epsilon_i$$
-$$ \frac{dJ}{db}J(m,b) = -2\sum_{i = 1}^n(y_i - (mx_i + b)) = -2\sum_{i = 1}^n \epsilon_i $$
-    
-Which both look to the errors of the current regression line for our dataset to determine how to update the regression line next.  These formulas came from our cost function, $J(m,b) = \sum_{i = 1}^n(y_i - (mx_i + b))^2 $, and using the gradient to find the direction of steepest descent.  Translating this into code, and seeing how the regression line continued to improve in alignment with the data, we saw the effectiveness of this technique in practice. Additionally, we saw how you can extend the gradient descent algorithm to multiple predictors.
+In this lesson, we learned some more about gradient descent.  We saw how gradient descent allows our function to improve to a regression line that better matches our data.  We see how to change our regression line, by looking at the Residual Sum of Squares related to the current regression line. We update our regression line by looking at the rate of change of our RSS as we adjust our regression line in the right direction -- that is, the slope of our cost curve.  The larger the magnitude of our rate of change (or slope of our cost curve) the larger our step size.  This way, we take larger steps the further away we are from our minimizing our RSS, and take smaller steps as we converge towards our minimum RSS. 
