@@ -106,19 +106,20 @@ Now let's use the `residual_sum_squares` function to build a cost curve.  Keepin
 ```python
 # Replace None with appropriate code
 def rss_values(x_values, y_values, m, b_values):
+    
     # Make a NumPy array to contain the data
-    None
+    results = []
     
     # Loop over all of the values in b_values
     for idx, b_val in enumerate(b_values):
+        
         # Add the current b value and associated RSS to the
         # NumPy array
-        None
-        None
+        rss = residual_sum_squares(x_values, y_values, m, b_val)
+        results.append([b_val, rss])
         
     # Return the NumPy array
-    None
-```
+    return np.array(results)
 
 
 ```python
@@ -198,7 +199,6 @@ def slope_at(x_values, y_values, m, b):
 # -232.73066022784406
 ```
 
-
 ```python
 # Use slope_at for b value 6
 
@@ -253,8 +253,15 @@ So now let's write a function called `updated_b`.  The function will tell us the
 
 
 ```python
-def updated_b(b, learning_rate, cost_curve_slope):
-    pass
+def updated_b(initial_b, learning_rate, cost_curve_slope):
+    step_size = learning_rate * cost_curve_slope
+    if cost_curve_slope < 0:
+        updated_b_value = initial_b - step_size 
+    else:
+        updated_b_value = initial_b + step_size
+        
+    return updated_b_value
+
 ```
 
 Test out your function below. Each time we update `current_b` and step a little closer to the optimal value.
@@ -358,7 +365,14 @@ Now let's write another function called `gradient_descent`.  The inputs of the f
 
 ```python
 def gradient_descent(x_values, y_values, steps, current_b, learning_rate, m):
-    pass
+    result = []
+    for step in range(steps):
+        slope = slope_at(x_values, y_values, m, current_b)
+        rss = residual_sum_squares(x_values, y_values, m, current_b)
+        result.append({'b': current_b, 'slope': slope, 'rss': rss})
+        current_b = updated_b(current_b, learning_rate, slope)
+        
+    return result
 ```
 
 
